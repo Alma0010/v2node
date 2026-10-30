@@ -53,7 +53,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOEXPERIMENT: jsonv2
-      V2NODE_MIHOMO_TEST_BINARY: ${{ runner.temp }}/mihomo-v1.19.31
       V2NODE_REQUIRE_MIHOMO_TEST: '1'
     steps:
       - uses: actions/checkout@v5
@@ -61,7 +60,10 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Download checksum-pinned mihomo regression client
-        run: python3 tests/fetch_mihomo.py --output "$V2NODE_MIHOMO_TEST_BINARY"
+        run: |
+          mihomo_test_binary="$RUNNER_TEMP/mihomo-v1.19.31"
+          python3 tests/fetch_mihomo.py --output "$mihomo_test_binary"
+          echo "V2NODE_MIHOMO_TEST_BINARY=$mihomo_test_binary" >> "$GITHUB_ENV"
       - name: Test node and AnyTLS authentication
         run: go test ./... github.com/xtls/xray-core/proxy/anytls
       - name: Check Go code
