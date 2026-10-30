@@ -55,7 +55,8 @@ type CommonNode struct {
 	CongestionControl string `json:"congestion_control"`
 	ZeroRTTHandshake  bool   `json:"zero_rtt_handshake"`
 	//anytls
-	PaddingScheme []string `json:"padding_scheme,omitempty"`
+	PaddingScheme    []string `json:"padding_scheme,omitempty"`
+	AnyTLSRejectHTTP *bool    `json:"-"`
 	//hysteria hysteria2
 	UpMbps                  int    `json:"up_mbps"`
 	DownMbps                int    `json:"down_mbps"`
@@ -162,6 +163,7 @@ func (c *Client) GetNodeInfo(ctx context.Context) (node *NodeInfo, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode node params error: %s", err)
 	}
+	cm.AnyTLSRejectHTTP = c.anyTLSRejectHTTP
 	switch cm.Protocol {
 	case "vmess", "trojan", "hysteria2", "tuic", "anytls", "vless":
 		node.Type = cm.Protocol

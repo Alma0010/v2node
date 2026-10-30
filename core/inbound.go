@@ -152,6 +152,10 @@ func buildInbound(nodeInfo *panel.NodeInfo, tag string) (*core.InboundHandlerCon
 				alpnList := &coreConf.StringList{"h3"}
 				in.StreamSetting.TLSSettings.ALPN = alpnList
 			}
+			if anyTLSRejectHTTPEnabled(nodeInfo) {
+				alpnList := coreConf.StringList{"http/1.1"}
+				in.StreamSetting.TLSSettings.ALPN = &alpnList
+			}
 		}
 	case panel.Reality:
 		if in.StreamSetting == nil {
@@ -488,8 +492,12 @@ func buildTuic(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) 
 func buildAnyTLS(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
 	inbound.Protocol = "anytls"
 	v := nodeInfo.Common
+	if v.AnyTLSRejectHTTP != nil && *v.AnyTLSRejectHTTP && !anyTLSRejectHTTPSupported(nodeInfo) {
+		return errors.New("AnyTLSRejectHTTP requires AnyTLS over TCP with TLS enabled")
+	}
 	settings := &coreConf.AnyTLSServerConfig{
 		PaddingScheme: v.PaddingScheme,
+		RejectHTTP:    anyTLSRejectHTTPEnabled(nodeInfo),
 	}
 	t := coreConf.TransportProtocol(v.Network)
 	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
@@ -530,4 +538,13 @@ func buildAnyTLS(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig
 		return fmt.Errorf("marshal anytls settings error: %s", err)
 	}
 	return nil
+}
+
+func anyTLSRejectHTTPSupported(info *panel.NodeInfo) bool {
+	return info.Type == "anytls" && info.Security == panel.Tls && info.Common.Network == "tcp" &&
+		info.Common.CertInfo != nil && info.Common.CertInfo.CertMode != "" && info.Common.CertInfo.CertMode != "none"
+}
+
+func anyTLSRejectHTTPEnabled(info *panel.NodeInfo) bool {
+	return anyTLSRejectHTTPSupported(info) && (info.Common.AnyTLSRejectHTTP == nil || *info.Common.AnyTLSRejectHTTP)
 }

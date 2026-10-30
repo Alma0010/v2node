@@ -5,8 +5,48 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
+set -o pipefail
 cur_dir=$(pwd)
 
+V2NODE_REPOSITORY="Alma0010/v2node"
+DEFAULT_GITHUB_PROXY="https://v4.gh-proxy.org/"
+DOWNLOAD_PROXY=""
+PROXY_ARG_SET=0
+
+load_download_proxy() {
+    if [[ "$PROXY_ARG_SET" != 1 ]]; then
+        if [[ -n "${V2NODE_GITHUB_PROXY+x}" ]]; then
+            DOWNLOAD_PROXY="$V2NODE_GITHUB_PROXY"
+        elif [[ -r /etc/v2node/download-proxy ]]; then
+            IFS= read -r DOWNLOAD_PROXY < /etc/v2node/download-proxy || true
+        fi
+    fi
+    DOWNLOAD_PROXY="${DOWNLOAD_PROXY%$'\r'}"
+    if [[ -n "$DOWNLOAD_PROXY" ]]; then
+        if [[ ! "$DOWNLOAD_PROXY" =~ ^https://[^[:space:]\?\#]+/?$ ]]; then
+            echo "下载反代地址必须是 HTTPS URL" >&2
+            return 1
+        fi
+        DOWNLOAD_PROXY="${DOWNLOAD_PROXY%/}/"
+    fi
+}
+
+github_download_url() {
+    printf '%s%s\n' "$DOWNLOAD_PROXY" "$1"
+}
+
+download_file() {
+    curl --fail --location --show-error --silent --connect-timeout 10 \
+        --max-time 300 --retry 2 --retry-delay 1 \
+        --output "$2" "$(github_download_url "$1")"
+}
+
+validate_shell_script() {
+    [[ "$(head -n 1 "$1" | tr -d '\r')" == '#!/bin/bash' ]] && bash -n "$1"
+}
+
+
+detect_platform() {
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}错误：${plain} 必须使用root用户运行此脚本！\n" && exit 1
 
@@ -76,6 +116,8 @@ elif [[ x"${release}" == x"debian" ]]; then
     fi
 fi
 
+}
+
 confirm() {
     if [[ $# > 1 ]]; then
         echo && read -rp "$1 [默认$2]: " temp
@@ -106,31 +148,50 @@ before_show_menu() {
     show_menu
 }
 
-install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/gunzi-666/v2node/main/script/install.sh)
-    if [[ $? == 0 ]]; then
-        if [[ $# == 0 ]]; then
-            start
-        else
-            start 0
-        fi
+run_installer() {
+    local args=("$@") i temporary result
+    for ((i=0; i<${#args[@]}; i++)); do
+        case "${args[$i]}" in
+            --proxy) DOWNLOAD_PROXY="$DEFAULT_GITHUB_PROXY"; PROXY_ARG_SET=1 ;;
+            --proxy=*) DOWNLOAD_PROXY="${args[$i]#*=}"; PROXY_ARG_SET=1 ;;
+            --direct) DOWNLOAD_PROXY=""; PROXY_ARG_SET=1 ;;
+        esac
+    done
+    load_download_proxy || return 1
+    temporary=$(mktemp "${TMPDIR:-/tmp}/v2node-install.XXXXXX") || return 1
+    if ! download_file "https://raw.githubusercontent.com/${V2NODE_REPOSITORY}/main/script/install.sh" "$temporary"; then
+        rm -f -- "$temporary"
+        return 1
     fi
+    if ! validate_shell_script "$temporary"; then
+        rm -f -- "$temporary"
+        return 1
+    fi
+    V2NODE_GITHUB_PROXY="$DOWNLOAD_PROXY" bash "$temporary" "${args[@]}"
+    result=$?
+    rm -f -- "$temporary"
+    return "$result"
+}
+
+install() {
+    [[ "${1:-}" != 0 ]] || shift
+    run_installer "$@" && start 0
 }
 
 update() {
     if [[ $# == 0 ]]; then
-        echo && echo -n -e "输入指定版本(默认最新版): " && read version
+        read -rp "输入指定版本(默认最新版): " version
+        if [[ -n "$version" ]]; then
+            set -- "$version"
+        fi
     else
-        version=$2
+        [[ "$1" != 0 ]] || shift
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/gunzi-666/v2node/main/script/install.sh) $version
-    if [[ $? == 0 ]]; then
-        echo -e "${green}更新完成，已自动重启 v2node，请使用 v2node log 查看运行日志${plain}"
-        exit
-    fi
-
-    if [[ $# == 0 ]]; then
-        before_show_menu
+    if run_installer "$@"; then
+        echo -e "${green}更新完成，下载线路已保存${plain}"
+    else
+        echo -e "${red}更新失败，请查看上方错误${plain}" >&2
+        return 1
     fi
 }
 
@@ -307,15 +368,17 @@ show_log() {
 }
 
 update_shell() {
-    wget -O /usr/bin/v2node -N --no-check-certificate https://raw.githubusercontent.com/gunzi-666/v2node/main/script/v2node.sh
-    if [[ $? != 0 ]]; then
-        echo ""
-        echo -e "${red}下载脚本失败，请检查本机能否连接 Github${plain}"
-        before_show_menu
-    else
-        chmod +x /usr/bin/v2node
-        echo -e "${green}升级脚本成功，请重新运行脚本${plain}" && exit 0
+    local temporary
+    load_download_proxy || return 1
+    temporary=$(mktemp "${TMPDIR:-/tmp}/v2node-shell.XXXXXX") || return 1
+    if ! download_file "https://raw.githubusercontent.com/${V2NODE_REPOSITORY}/main/script/v2node.sh" "$temporary" || ! validate_shell_script "$temporary"; then
+        rm -f -- "$temporary"
+        return 1
     fi
+    install -m 755 "$temporary" /usr/bin/v2node.new && mv -f /usr/bin/v2node.new /usr/bin/v2node
+    local result=$?
+    rm -f -- "$temporary"
+    return "$result"
 }
 
 # 0: running, 1: not running, 2: not installed
@@ -502,7 +565,7 @@ show_usage() {
     echo "v2node log          - 查看 v2node 日志"
     echo "v2node x25519       - 生成 x25519 密钥"
     echo "v2node generate     - 生成 v2node 配置文件"
-    echo "v2node update       - 更新 v2node"
+    echo "v2node update [版本] [--proxy | --direct] - 更新 v2node 并选择下载线路"
     echo "v2node update x.x.x - 安装 v2node 指定版本"
     echo "v2node install      - 安装 v2node"
     echo "v2node uninstall    - 卸载 v2node"
@@ -513,7 +576,7 @@ show_usage() {
 show_menu() {
     echo -e "
   ${green}v2node 后端管理脚本，${plain}${red}不适用于docker${plain}
---- https://github.com/gunzi-666/v2node ---
+--- https://github.com/Alma0010/v2node ---
   ${green}0.${plain} 修改配置
 ————————————————
   ${green}1.${plain} 安装 v2node
@@ -561,6 +624,8 @@ show_menu() {
 }
 
 
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    detect_platform
 if [[ $# > 0 ]]; then
     case $1 in
         "start") check_install 0 && start 0 ;;
@@ -570,15 +635,16 @@ if [[ $# > 0 ]]; then
         "enable") check_install 0 && enable 0 ;;
         "disable") check_install 0 && disable 0 ;;
         "log") check_install 0 && show_log 0 ;;
-        "update") check_install 0 && update 0 $2 ;;
+        "update") shift; check_install 0 && update 0 "$@" ;;
         "config") config $* ;;
         "generate") generate_config_file ;;
-        "install") check_uninstall 0 && install 0 ;;
+        "install") shift; check_uninstall 0 && install 0 "$@" ;;
         "uninstall") check_install 0 && uninstall 0 ;;
         "version") check_install 0 && show_v2node_version 0 ;;
-        "update_shell") update_shell ;;
+        "update_shell") shift; for argument in "$@"; do case "$argument" in --proxy) DOWNLOAD_PROXY="$DEFAULT_GITHUB_PROXY"; PROXY_ARG_SET=1 ;; --proxy=*) DOWNLOAD_PROXY="${argument#*=}"; PROXY_ARG_SET=1 ;; --direct) DOWNLOAD_PROXY=""; PROXY_ARG_SET=1 ;; esac; done; update_shell ;;
         *) show_usage
     esac
 else
     show_menu
+fi
 fi

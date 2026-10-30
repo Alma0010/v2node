@@ -1,0 +1,6 @@
+{
+  "Log": { "Level": "warning", "Output": "", "Access": "none" },
+  "Nodes": [
+    { "ApiHost": "https://example.com/", "NodeID": 1, "ApiKey": "YOUR_API_KEY", "Timeout": 15 }
+  ]
+}

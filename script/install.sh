@@ -5,8 +5,90 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
+set -o pipefail
 cur_dir=$(pwd)
 
+V2NODE_REPOSITORY="Alma0010/v2node"
+DEFAULT_GITHUB_PROXY="https://v4.gh-proxy.org/"
+DOWNLOAD_PROXY=""
+PROXY_ARG_SET=0
+
+load_download_proxy() {
+    if [[ "$PROXY_ARG_SET" != 1 ]]; then
+        if [[ -n "${V2NODE_GITHUB_PROXY+x}" ]]; then
+            DOWNLOAD_PROXY="$V2NODE_GITHUB_PROXY"
+        elif [[ -r /etc/v2node/download-proxy ]]; then
+            IFS= read -r DOWNLOAD_PROXY < /etc/v2node/download-proxy || true
+        fi
+    fi
+    DOWNLOAD_PROXY="${DOWNLOAD_PROXY%$'\r'}"
+    if [[ -n "$DOWNLOAD_PROXY" ]]; then
+        if [[ ! "$DOWNLOAD_PROXY" =~ ^https://[^[:space:]\?\#]+/?$ ]]; then
+            echo "下载反代地址必须是 HTTPS URL" >&2
+            return 1
+        fi
+        DOWNLOAD_PROXY="${DOWNLOAD_PROXY%/}/"
+    fi
+}
+
+github_download_url() {
+    printf '%s%s\n' "$DOWNLOAD_PROXY" "$1"
+}
+
+download_file() {
+    curl --fail --location --show-error --silent --connect-timeout 10 \
+        --max-time 300 --retry 2 --retry-delay 1 \
+        --output "$2" "$(github_download_url "$1")"
+}
+
+validate_shell_script() {
+    [[ "$(head -n 1 "$1" | tr -d '\r')" == '#!/bin/bash' ]] && bash -n "$1"
+}
+
+
+########################
+# 参数解析
+########################
+VERSION_ARG=""
+API_HOST_ARG=""
+NODE_ID_ARG=""
+API_KEY_ARG=""
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --api-host)
+                [[ $# -ge 2 && "$2" != --* ]] || { echo "参数 --api-host 缺少值" >&2; exit 1; }
+                API_HOST_ARG="$2"; shift 2 ;;
+            --node-id)
+                [[ $# -ge 2 && "$2" != --* ]] || { echo "参数 --node-id 缺少值" >&2; exit 1; }
+                NODE_ID_ARG="$2"; shift 2 ;;
+            --api-key)
+                [[ $# -ge 2 && "$2" != --* ]] || { echo "参数 --api-key 缺少值" >&2; exit 1; }
+                API_KEY_ARG="$2"; shift 2 ;;
+            --proxy)
+                DOWNLOAD_PROXY="$DEFAULT_GITHUB_PROXY"; PROXY_ARG_SET=1; shift ;;
+            --proxy=*)
+                DOWNLOAD_PROXY="${1#*=}"; PROXY_ARG_SET=1; shift ;;
+            --direct)
+                DOWNLOAD_PROXY=""; PROXY_ARG_SET=1; shift ;;
+            -h|--help)
+                echo "用法: $0 [版本号] [--api-host URL] [--node-id ID] [--api-key KEY] [--proxy[=URL] | --direct]"
+                exit 0 ;;
+            --*)
+                echo "未知参数: $1"; exit 1 ;;
+            *)
+                # 兼容第一个位置参数作为版本号
+                if [[ -z "$VERSION_ARG" ]]; then
+                    VERSION_ARG="$1"; shift
+                else
+                    echo "多余参数: $1" >&2; exit 1
+                fi ;;
+        esac
+    done
+}
+
+detect_platform() {
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}错误：${plain} 必须使用root用户运行此脚本！\n" && exit 1
 
@@ -32,39 +114,6 @@ elif cat /proc/version | grep -Eqi "arch"; then
 else
     echo -e "${red}未检测到系统版本，请联系脚本作者！${plain}\n" && exit 1
 fi
-
-########################
-# 参数解析
-########################
-VERSION_ARG=""
-API_HOST_ARG=""
-NODE_ID_ARG=""
-API_KEY_ARG=""
-
-parse_args() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --api-host)
-                API_HOST_ARG="$2"; shift 2 ;;
-            --node-id)
-                NODE_ID_ARG="$2"; shift 2 ;;
-            --api-key)
-                API_KEY_ARG="$2"; shift 2 ;;
-            -h|--help)
-                echo "用法: $0 [版本号] [--api-host URL] [--node-id ID] [--api-key KEY]"
-                exit 0 ;;
-            --*)
-                echo "未知参数: $1"; exit 1 ;;
-            *)
-                # 兼容第一个位置参数作为版本号
-                if [[ -z "$VERSION_ARG" ]]; then
-                    VERSION_ARG="$1"; shift
-                else
-                    shift
-                fi ;;
-        esac
-    done
-}
 
 arch=$(uname -m)
 
@@ -108,6 +157,8 @@ elif [[ x"${release}" == x"debian" ]]; then
         echo -e "${red}请使用 Debian 8 或更高版本的系统！${plain}\n" && exit 1
     fi
 fi
+
+}
 
 install_base() {
     # 优化版本：批量检查和安装包，减少系统调用
@@ -248,9 +299,8 @@ EOF
             systemctl restart v2node
         fi
         sleep 2
-        check_status
         echo -e ""
-        if [[ $? == 0 ]]; then
+        if check_status; then
             echo -e "${green}v2node 重启成功${plain}"
         else
             echo -e "${red}v2node 可能启动失败，请使用 v2node log 查看日志信息${plain}"
@@ -259,42 +309,51 @@ EOF
 
 install_v2node() {
     local version_param="$1"
-    if [[ -e /usr/local/v2node/ ]]; then
-        rm -rf /usr/local/v2node/
-    fi
 
-    mkdir /usr/local/v2node/ -p
-    cd /usr/local/v2node/
-
-    if  [[ -z "$version_param" ]] ; then
-        last_version=$(curl -Ls "https://api.github.com/repos/gunzi-666/v2node/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        if [[ ! -n "$last_version" ]]; then
-            echo -e "${red}检测 v2node 版本失败，可能是超出 Github API 限制，请稍后再试，或手动指定 v2node 版本安装${plain}"
-            exit 1
-        fi
-        echo -e "${green}检测到最新版本：${last_version}，开始安装...${plain}"
-        url="https://github.com/gunzi-666/v2node/releases/download/${last_version}/v2node-linux-${arch}.zip"
-        curl -sL "$url" | pv -s 30M -W -N "下载进度" > /usr/local/v2node/v2node-linux.zip
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}下载 v2node 失败，请确保你的服务器能够下载 Github 的文件${plain}"
-            exit 1
-        fi
+    if [[ -z "$version_param" || "$version_param" == latest ]]; then
+        local metadata
+        # This API resolves the tag only. Every downloaded file below uses the
+        # selected route and an explicit release tag, never /latest/download/.
+        metadata=$(curl --fail --location --show-error --silent --connect-timeout 10 \
+            --max-time 30 --retry 2 "https://api.github.com/repos/${V2NODE_REPOSITORY}/releases/latest") || {
+            echo "查询版本失败，可指定版本号后重试" >&2; exit 1;
+        }
+        last_version=$(printf '%s\n' "$metadata" | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"[:space:]]+)".*/\1/p' | head -n1)
     else
         last_version="v${version_param#v}"
-        url="https://github.com/gunzi-666/v2node/releases/download/${last_version}/v2node-linux-${arch}.zip"
-        curl -sL "$url" | pv -s 30M -W -N "下载进度" > /usr/local/v2node/v2node-linux.zip
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}下载 v2node $1 失败，请确保此版本存在${plain}"
-            exit 1
-        fi
     fi
-
-    unzip v2node-linux.zip
-    rm v2node-linux.zip -f
-    chmod +x v2node
-    mkdir /etc/v2node/ -p
-    cp geoip.dat /etc/v2node/
-    cp geosite.dat /etc/v2node/
+    [[ "$last_version" =~ ^v?[0-9][0-9A-Za-z._-]*$ ]] || { echo "无效的发行版版本号" >&2; exit 1; }
+    mkdir -p /usr/local
+    download_dir=$(mktemp -d /usr/local/.v2node-download.XXXXXX) || exit 1
+    cleanup_download() {
+        if [[ -n "${download_dir:-}" && "$download_dir" == /usr/local/.v2node-download.* ]]; then
+            rm -rf -- "$download_dir"
+        fi
+    }
+    trap cleanup_download EXIT
+    url="https://github.com/${V2NODE_REPOSITORY}/releases/download/${last_version}/v2node-linux-${arch}.zip"
+    echo "下载 ${last_version}，线路: ${DOWNLOAD_PROXY:-GitHub 直连}"
+    download_file "$url" "$download_dir/v2node.zip" || { echo "下载发行版失败，旧版本未替换" >&2; exit 1; }
+    unzip -tq "$download_dir/v2node.zip" >/dev/null || { echo "发行版压缩包校验失败" >&2; exit 1; }
+    unzip -oq "$download_dir/v2node.zip" -d "$download_dir" || exit 1
+    [[ -s "$download_dir/v2node" && -s "$download_dir/geoip.dat" && -s "$download_dir/geosite.dat" ]] || {
+        echo "发行版缺少程序或资源文件" >&2; exit 1;
+    }
+    if [[ ! -f /etc/v2node/config.json && ! -s "$download_dir/config.json" ]]; then
+        echo "发行版缺少配置模板" >&2; exit 1
+    fi
+    download_file "https://raw.githubusercontent.com/${V2NODE_REPOSITORY}/${last_version}/script/v2node.sh" "$download_dir/v2node.sh" || exit 1
+    validate_shell_script "$download_dir/v2node.sh" || { echo "管理脚本校验失败" >&2; exit 1; }
+    mkdir -p /usr/local/v2node /etc/v2node
+    # Replace only after the complete release and management script are ready.
+    install -m 755 "$download_dir/v2node" /usr/local/v2node/v2node.new || exit 1
+    mv -f /usr/local/v2node/v2node.new /usr/local/v2node/v2node || exit 1
+    cp "$download_dir/geoip.dat" /etc/v2node/ || exit 1
+    cp "$download_dir/geosite.dat" /etc/v2node/ || exit 1
+    install -m 755 "$download_dir/v2node.sh" /usr/bin/v2node.new || exit 1
+    mv -f /usr/bin/v2node.new /usr/bin/v2node || exit 1
+    printf '%s\n' "$DOWNLOAD_PROXY" > /etc/v2node/download-proxy
+    chmod 600 /etc/v2node/download-proxy
     if [[ x"${release}" == x"alpine" ]]; then
         rm /etc/init.d/v2node -f
         cat <<EOF > /etc/init.d/v2node
@@ -354,7 +413,7 @@ EOF
             echo -e "${green}已根据参数生成 /etc/v2node/config.json${plain}"
             first_install=false
         else
-            cp config.json /etc/v2node/
+            cp "$download_dir/config.json" /etc/v2node/ || { echo "发行版缺少配置模板" >&2; exit 1; }
             first_install=true
         fi
     else
@@ -364,9 +423,8 @@ EOF
             systemctl start v2node
         fi
         sleep 2
-        check_status
         echo -e ""
-        if [[ $? == 0 ]]; then
+        if check_status; then
             echo -e "${green}v2node 重启成功${plain}"
         else
             echo -e "${red}v2node 可能启动失败，请使用 v2node log 查看日志信息${plain}"
@@ -375,11 +433,9 @@ EOF
     fi
 
 
-    curl -o /usr/bin/v2node -Ls https://raw.githubusercontent.com/gunzi-666/v2node/main/script/v2node.sh
-    chmod +x /usr/bin/v2node
-
-    cd $cur_dir
-    rm -f install.sh
+    cleanup_download
+    trap - EXIT
+    cd "$cur_dir"
     echo "------------------------------------------"
     echo -e "管理脚本使用方法: "
     echo "------------------------------------------"
@@ -398,7 +454,6 @@ EOF
     echo "v2node uninstall    - 卸载 v2node"
     echo "v2node version      - 查看 v2node 版本"
     echo "------------------------------------------"
-    curl -fsS --max-time 10 "https://api.v-50.me/counter" || true
 
     if [[ $first_install == true ]]; then
         read -rp "检测到你为第一次安装 v2node，是否自动生成 /etc/v2node/config.json？(y/n): " if_generate
@@ -418,7 +473,11 @@ EOF
     fi
 }
 
-parse_args "$@"
-echo -e "${green}开始安装${plain}"
-install_base
-install_v2node "$VERSION_ARG"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    parse_args "$@"
+    load_download_proxy || exit 1
+    detect_platform
+    echo -e "${green}开始安装${plain}"
+    install_base
+    install_v2node "$VERSION_ARG"
+fi
