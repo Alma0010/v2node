@@ -36,15 +36,15 @@ v2node update_shell
 
 安裝時，管理腳本也從同一個版本標籤下載，與安裝包保持一致。
 
-### 候選版安裝
+### v0.4.8 正式版
 
-此相容候選版使用 `v0.4.10-rc.2`。等此版本的 Release 附件上傳完成後，在測試節點執行：
+此版本使用 gunzi 的最新主程式與 Xray 26.9.30，包含 AnyTLS 404、反代下載及 REALITY 舊 ClientHello 相容修改。
 
 ```bash
-curl -fL https://v4.gh-proxy.org/https://raw.githubusercontent.com/Alma0010/v2node/v0.4.10-rc.2/script/install.sh -o /tmp/v2node-install.sh && bash /tmp/v2node-install.sh v0.4.10-rc.2 --proxy
+curl -fL https://v4.gh-proxy.org/https://raw.githubusercontent.com/Alma0010/v2node/v0.4.8/script/install.sh -o /tmp/v2node-install.sh && bash /tmp/v2node-install.sh v0.4.8 --proxy
 ```
 
-此命令固定下載候選版的腳本與安裝包。候選版不設為 Latest；請先確認 VLESS／REALITY 和 AnyTLS 的實際代理連線，再分批更新其他機器。
+此命令固定下載同一正式版本的腳本與安裝包。
 
 ### REALITY 舊客戶端相容
 

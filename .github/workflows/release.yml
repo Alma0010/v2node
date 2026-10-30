@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '發布版本號，例如 v1.2.3；留空只構建'
+        description: 'Release version, e.g. v1.2.3; leave blank to build only'
         required: false
         default: ''
         type: string
