@@ -73,6 +73,8 @@ jobs:
           bash -n script/install.sh
           bash -n script/v2node.sh
           python3 -m unittest discover -s tests -v
+      - name: Test Alpine 3.21 service updates with real OpenRC
+        run: bash tests/test_alpine_openrc.sh
 
   build:
     needs: [prepare, test]

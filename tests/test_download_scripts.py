@@ -38,7 +38,7 @@ class DownloadScriptsTest(unittest.TestCase):
         source = (ROOT / 'script' / filename).read_text(encoding='utf8')
         # All absolute installation destinations are redirected into this test's
         # disposable filesystem. Network and service calls are mocked below.
-        for prefix in ['/usr/local', '/usr/bin', '/etc/v2node', '/etc/systemd', '/etc/init.d']:
+        for prefix in ['/usr/local', '/usr/bin', '/etc/v2node', '/etc/systemd', '/etc/init.d', '/run/v2node.pid', '/var/log/v2node.log']:
             source = source.replace(prefix, self.sandbox.as_posix() + prefix)
         copy = self.base / filename
         copy.write_text(source, encoding='utf8', newline='\n')

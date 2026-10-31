@@ -253,12 +253,8 @@ check_status() {
         return 2
     fi
     if [[ x"${release}" == x"alpine" ]]; then
-        temp=$(service v2node status | awk '{print $3}')
-        if [[ x"${temp}" == x"started" ]]; then
-            return 0
-        else
-            return 1
-        fi
+        service v2node status >/dev/null 2>&1
+        return $?
     else
         temp=$(systemctl status v2node | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
         if [[ x"${temp}" == x"running" ]]; then
@@ -267,6 +263,27 @@ check_status() {
             return 1
         fi
     fi
+}
+
+stop_openrc_for_update() {
+    local pid="" executable=""
+    if [[ -r /run/v2node.pid ]]; then
+        IFS= read -r pid < /run/v2node.pid || true
+    fi
+    if [[ "$pid" =~ ^[1-9][0-9]*$ ]] && kill -0 "$pid" 2>/dev/null; then
+        executable=$(readlink "/proc/$pid/exe") || return 1
+        case "$executable" in
+            /usr/local/v2node/v2node|'/usr/local/v2node/v2node (deleted)') ;;
+            *) echo "PID 文件指向其他程序，已中止更新" >&2; return 1 ;;
+        esac
+        # An earlier atomic replacement can leave the live executable marked
+        # deleted. Match the verified PID and process name, not the new inode.
+        start-stop-daemon --stop --retry TERM/10 --pidfile /run/v2node.pid --name v2node || return 1
+    fi
+    if [[ -x /etc/init.d/v2node ]]; then
+        service v2node stop >/dev/null 2>&1 || rc-service v2node zap || return 1
+    fi
+    rm -f /run/v2node.pid
 }
 
 generate_v2node_config() {
@@ -344,6 +361,9 @@ install_v2node() {
     fi
     download_file "https://raw.githubusercontent.com/${V2NODE_REPOSITORY}/${last_version}/script/v2node.sh" "$download_dir/v2node.sh" || exit 1
     validate_shell_script "$download_dir/v2node.sh" || { echo "管理脚本校验失败" >&2; exit 1; }
+    if [[ x"${release}" == x"alpine" ]]; then
+        stop_openrc_for_update || { echo "无法停止旧服务，程序尚未替换" >&2; exit 1; }
+    fi
     mkdir -p /usr/local/v2node /etc/v2node
     # Replace only after the complete release and management script are ready.
     install -m 755 "$download_dir/v2node" /usr/local/v2node/v2node.new || exit 1
@@ -363,11 +383,18 @@ name="v2node"
 description="v2node"
 
 command="/usr/local/v2node/v2node"
-command_args="server"
+command_args="server --config /etc/v2node/config.json"
 command_user="root"
+directory="/usr/local/v2node"
+output_log="/var/log/v2node.log"
+error_log="/var/log/v2node.log"
 
 pidfile="/run/v2node.pid"
 command_background="yes"
+
+start_pre() {
+        checkpath --file --owner root:root --mode 0640 /var/log/v2node.log
+}
 
 depend() {
         need net
@@ -428,6 +455,10 @@ EOF
             echo -e "${green}v2node 重启成功${plain}"
         else
             echo -e "${red}v2node 可能启动失败，请使用 v2node log 查看日志信息${plain}"
+            if [[ x"${release}" == x"alpine" && -r /var/log/v2node.log ]]; then
+                tail -n 40 /var/log/v2node.log
+            fi
+            exit 1
         fi
         first_install=false
     fi

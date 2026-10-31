@@ -358,7 +358,11 @@ disable() {
 
 show_log() {
     if [[ x"${release}" == x"alpine" ]]; then
-        echo -e "${red}alpine系统暂不支持日志查看${plain}\n" && exit 1
+        if [[ ! -r /var/log/v2node.log ]]; then
+            echo "尚无 OpenRC 日志，请使用新版安装脚本更新服务启动文件" >&2
+            return 1
+        fi
+        tail -n 100 -f /var/log/v2node.log
     else
         journalctl -u v2node.service -e --no-pager -f
     fi
@@ -387,12 +391,8 @@ check_status() {
         return 2
     fi
     if [[ x"${release}" == x"alpine" ]]; then
-        temp=$(service v2node status | awk '{print $3}')
-        if [[ x"${temp}" == x"started" ]]; then
-            return 0
-        else
-            return 1
-        fi
+        service v2node status >/dev/null 2>&1
+        return $?
     else
         temp=$(systemctl status v2node | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
         if [[ x"${temp}" == x"running" ]]; then

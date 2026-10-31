@@ -41,10 +41,10 @@ v2node update_shell
 此版本使用 gunzi 的最新主程式與 Xray 26.9.30，包含 AnyTLS 404、反代下載及 REALITY 舊 ClientHello 相容修改。
 
 ```bash
-curl -fL https://v4.gh-proxy.org/https://raw.githubusercontent.com/Alma0010/v2node/v0.4.8/script/install.sh -o /tmp/v2node-install.sh && bash /tmp/v2node-install.sh v0.4.8 --proxy
+curl -fL https://v4.gh-proxy.org/https://raw.githubusercontent.com/Alma0010/v2node/main/script/install.sh -o /tmp/v2node-install.sh && bash /tmp/v2node-install.sh v0.4.8 --proxy && v2node update_shell --proxy
 ```
 
-此命令固定下載同一正式版本的腳本與安裝包。
+此命令使用目前的安裝／管理腳本，節點程式固定為 v0.4.8。
 
 ### REALITY 舊客戶端相容
 
@@ -63,6 +63,14 @@ bash /tmp/v2node-install.sh --proxy --api-host https://panel.example.com --node-
 更新會先完成下載、壓縮包檢查和管理腳本語法檢查，再替換程式；下載失敗時保留舊程式，已有 `/etc/v2node/config.json` 不會被覆蓋。
 
 安裝腳本會重建服務啟動檔；有自訂啟動參數或服務設定時，請先備份並核對這些設定。
+
+## Alpine／OpenRC 更新
+
+Alpine 3.21 的更新流程會先完成下載與檢查，再停止舊程序、替換執行檔並重新啟動，避免 OpenRC 仍追蹤已被替換的舊程序。已存在的 `config.json` 會保留。
+
+若曾在更新後看到 `has already been started` 與 `status: crashed`，請使用上面的目前安裝腳本重裝指定版本；v0.4.8 標籤內的舊安裝腳本沒有這項修正。執行 `v2node update_shell --proxy` 可取得支援 Alpine 日誌的新管理腳本。
+
+OpenRC 會把標準輸出與錯誤保存至 `/var/log/v2node.log`，可用 `v2node log` 或 `tail -n 100 /var/log/v2node.log` 查看。`crashed` 也可能是程序確實退出，仍需依日誌判斷原因。
 
 ## AnyTLS 內建 404 回應
 
