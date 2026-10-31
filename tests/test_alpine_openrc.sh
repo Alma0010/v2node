@@ -49,7 +49,7 @@ GO
     echo "d297f0ece9e164a39a518d4fe23f4332c4374c0ea1d55388a827a6f23ce05a41  $fixture_dir/release.zip" | sha256sum -c -
     mkdir "$fixture_dir/release"
     unzip -q "$fixture_dir/release.zip" v2node geoip.dat geosite.dat -d "$fixture_dir/release"
-    docker run --rm \
+    docker run --rm --init \
         --mount "type=bind,src=$PWD,dst=/work,readonly" \
         --mount "type=bind,src=$fixture_dir,dst=/fixtures,readonly" \
         alpine:3.21 sh -ec 'apk add --no-cache bash openrc curl unzip zip coreutils >/dev/null; exec bash /work/tests/test_alpine_openrc.sh --inside'
@@ -84,13 +84,11 @@ old_pid=$(cat /run/v2node.pid)
 install -m 755 /fixtures/new /usr/local/v2node/v2node.new
 mv /usr/local/v2node/v2node.new /usr/local/v2node/v2node
 rc-service v2node start
-if rc-service v2node status; then
-    echo "Expected the old upgrade sequence to report crashed" >&2
-    exit 1
-fi
+rc-service v2node status || true
 kill -0 "$old_pid"
+[[ "$(cat /run/v2node.pid)" == "$old_pid" ]]
 [[ "$(readlink "/proc/$old_pid/exe")" == '/usr/local/v2node/v2node (deleted)' ]]
-echo 'Reproduced: OpenRC says crashed while the old executable is still running'
+echo 'Reproduced: start leaves the old executable running after replacement'
 
 source /work/script/install.sh
 release=alpine
@@ -132,6 +130,20 @@ updated_pid=$(cat /run/v2node.pid)
 [[ "$updated_pid" != "$new_pid" ]]
 [[ "$original_config" == "$(sha256sum /etc/v2node/config.json)" ]]
 echo 'A normal running-service upgrade also restarted correctly'
+
+kill -KILL "$updated_pid"
+for attempt in {1..50}; do
+    kill -0 "$updated_pid" 2>/dev/null || break
+    sleep 0.02
+done
+if rc-service v2node status; then
+    echo 'Expected the terminated daemon to be reported crashed' >&2
+    exit 1
+fi
+(install_v2node v0.4.8)
+rc-service v2node status
+updated_pid=$(cat /run/v2node.pid)
+echo 'An actually crashed daemon also recovered without losing config'
 
 if (download_file() { return 22; }; install_v2node v0.4.8); then
     echo 'An unsuccessful download unexpectedly succeeded' >&2
