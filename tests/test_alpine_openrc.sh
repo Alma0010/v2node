@@ -58,8 +58,8 @@ fi
 
 # This runs only in the disposable Alpine container. It uses real OpenRC and
 # real ELF processes, without contacting a panel or changing any host service.
-mkdir -p /run/openrc /usr/local/v2node /etc/v2node /tmp/bundle
-touch /run/openrc/softlevel
+mkdir -p /run/openrc/{exclusive,started,starting,stopping,inactive,wasinactive,daemons,options,scheduled,failed} /usr/local/v2node /etc/v2node /tmp/bundle
+printf 'default\n' > /run/openrc/softlevel
 # No init system boots the container's network. Skip only dependencies here;
 # the actual service, daemon tracking, PID files and init script remain real.
 rc-service() { command /sbin/rc-service --nodeps "$@"; }
