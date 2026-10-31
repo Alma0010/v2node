@@ -45,7 +45,7 @@ start() { return 0; }
 stop() { return 0; }
 RC
 chmod +x /etc/init.d/net
-rc-service net start
+rc-service --nodeps net start
 cat > /etc/init.d/v2node <<'RC'
 #!/sbin/openrc-run
 command="/usr/local/v2node/v2node"
