@@ -80,6 +80,9 @@ curl() {
         self.assertEqual(urls, [PROXY+'https://github.com/Alma0010/v2node/releases/download/v1.2.3/v2node-linux-64.zip', PROXY+'https://raw.githubusercontent.com/Alma0010/v2node/v1.2.3/script/v2node.sh'])
         self.assertEqual(self.program.read_text(), 'new-program')
         self.assertEqual(self.config.read_text(), '{"existing":"keep-this"}')
+        for name, value in [('geoip.dat', 'new-geoip'), ('geosite.dat', 'new-geosite')]:
+            self.assertEqual((self.sandbox/'usr/local/v2node'/name).read_text(), value)
+            self.assertEqual((self.sandbox/'etc/v2node'/name).read_text(), value)
         self.assertEqual((self.sandbox/'etc/v2node/download-proxy').read_text(), PROXY+'\n')
         self.assertFalse(list((self.sandbox/'usr/local').glob('.v2node-download.*')))
 

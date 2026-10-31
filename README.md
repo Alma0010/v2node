@@ -72,6 +72,8 @@ Alpine 3.21 的更新流程會先完成下載與檢查，再停止舊程序、�
 
 OpenRC 會把標準輸出與錯誤保存至 `/var/log/v2node.log`，可用 `v2node log` 或 `tail -n 100 /var/log/v2node.log` 查看。`crashed` 也可能是程序確實退出，仍需依日誌判斷原因。
 
+安裝腳本會把 `geoip.dat` 與 `geosite.dat` 同時放在 `/usr/local/v2node` 和 `/etc/v2node`，支援 Xray 預設的資料檔位置及既有明確指定的路徑。若舊安裝在載入 `geoip:cn` 時提示 `/usr/local/v2node/geoip.dat` 不存在，可用目前的安裝腳本重裝，或把 `/etc/v2node` 中的這兩個資料檔複製到程式目錄後再啟動。
+
 ## AnyTLS 內建 404 回應
 
 AnyTLS 使用 TCP 且啟用 TLS 時，預設對未通過認證的普通 HTTP/1.0、HTTP/1.1 請求回傳 nginx 樣式的 `404 Not Found`。不需要安裝 Nginx、開回落端口或準備網站。

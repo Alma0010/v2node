@@ -24,10 +24,31 @@ GO
     for version in old new; do
         CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$fixture_dir/$version" -ldflags "-X main.version=$version" "$fixture_dir/daemon.go"
     done
+    cat > "$fixture_dir/assets.go" <<'GO'
+package main
+
+import (
+    "fmt"
+    "os"
+
+    panel "github.com/wyx2685/v2node/api/v2board"
+    "github.com/wyx2685/v2node/core"
+)
+
+func main() {
+    _, _, _, err := core.GetCustomConfig([]*panel.NodeInfo{{Tag: "asset-fixture", Common: &panel.CommonNode{Routes: []panel.Route{
+        {Action: "block_ip", Match: []string{"geoip:cn"}},
+        {Action: "block", Match: []string{"geosite:cn"}},
+    }}}})
+    if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+    fmt.Println("geoip:cn and geosite:cn loaded beside the executable")
+}
+GO
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$fixture_dir/asset-check" "$fixture_dir/assets.go"
     curl -fL --retry 2 https://github.com/Alma0010/v2node/releases/download/v0.4.8/v2node-linux-64.zip -o "$fixture_dir/release.zip"
     echo "d297f0ece9e164a39a518d4fe23f4332c4374c0ea1d55388a827a6f23ce05a41  $fixture_dir/release.zip" | sha256sum -c -
     mkdir "$fixture_dir/release"
-    unzip -q "$fixture_dir/release.zip" v2node -d "$fixture_dir/release"
+    unzip -q "$fixture_dir/release.zip" v2node geoip.dat geosite.dat -d "$fixture_dir/release"
     docker run --rm \
         --mount "type=bind,src=$PWD,dst=/work,readonly" \
         --mount "type=bind,src=$fixture_dir,dst=/fixtures,readonly" \
@@ -39,13 +60,10 @@ fi
 # real ELF processes, without contacting a panel or changing any host service.
 mkdir -p /run/openrc /usr/local/v2node /etc/v2node /tmp/bundle
 touch /run/openrc/softlevel
-cat > /etc/init.d/net <<'RC'
-#!/sbin/openrc-run
-start() { return 0; }
-stop() { return 0; }
-RC
-chmod +x /etc/init.d/net
-rc-service --nodeps net start
+# No init system boots the container's network. Skip only dependencies here;
+# the actual service, daemon tracking, PID files and init script remain real.
+rc-service() { command /sbin/rc-service --nodeps "$@"; }
+service() { rc-service "$@"; }
 cat > /etc/init.d/v2node <<'RC'
 #!/sbin/openrc-run
 command="/usr/local/v2node/v2node"
@@ -79,8 +97,15 @@ release=alpine
 arch=64
 cur_dir=/tmp
 install -m 755 /fixtures/new /tmp/bundle/v2node
-printf fixture > /tmp/bundle/geoip.dat
-printf fixture > /tmp/bundle/geosite.dat
+install -m 755 /fixtures/asset-check /usr/local/v2node/asset-check
+for asset in geoip.dat geosite.dat; do
+    cp "/fixtures/release/$asset" "/tmp/bundle/$asset"
+    cp "/fixtures/release/$asset" "/etc/v2node/$asset"
+done
+if /usr/local/v2node/asset-check; then
+    echo 'Expected the old asset layout to fail before the repair' >&2
+    exit 1
+fi
 printf '{}' > /tmp/bundle/config.json
 zip -jq /tmp/release.zip /tmp/bundle/*
 download_file() {
@@ -97,6 +122,7 @@ new_pid=$(cat /run/v2node.pid)
 [[ "$new_pid" != "$old_pid" ]]
 [[ "$(readlink "/proc/$new_pid/exe")" == /usr/local/v2node/v2node ]]
 [[ "$original_config" == "$(sha256sum /etc/v2node/config.json)" ]]
+/usr/local/v2node/asset-check
 grep -q 'fixture stderr new' /var/log/v2node.log
 echo 'Recovered the deleted-inode process and retained the existing config'
 

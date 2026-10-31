@@ -368,6 +368,12 @@ install_v2node() {
     # Replace only after the complete release and management script are ready.
     install -m 755 "$download_dir/v2node" /usr/local/v2node/v2node.new || exit 1
     mv -f /usr/local/v2node/v2node.new /usr/local/v2node/v2node || exit 1
+    # Xray resolves the default asset directory beside its executable. Keep
+    # the configuration-directory copies too for existing explicit paths.
+    for asset in geoip.dat geosite.dat; do
+        install -m 644 "$download_dir/$asset" "/usr/local/v2node/$asset.new" || exit 1
+        mv -f "/usr/local/v2node/$asset.new" "/usr/local/v2node/$asset" || exit 1
+    done
     cp "$download_dir/geoip.dat" /etc/v2node/ || exit 1
     cp "$download_dir/geosite.dat" /etc/v2node/ || exit 1
     install -m 755 "$download_dir/v2node.sh" /usr/bin/v2node.new || exit 1
