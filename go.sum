@@ -603,10 +603,8 @@ gioui.org v0.0.0-20210308172011-57750fc8a0a6/go.mod h1:RSH6KIUZ0p2xy5zHDxgAM4zum
 git.sr.ht/~sbinet/gg v0.3.1/go.mod h1:KGYtlADtqsqANL9ueOFkWymvzUvLMQllU5Ixo+8v3pc=
 github.com/AdamSLevy/jsonrpc2/v14 v14.1.0 h1:Dy3M9aegiI7d7PF1LUdjbVigJReo+QOceYsMyFh9qoE=
 github.com/AdamSLevy/jsonrpc2/v14 v14.1.0/go.mod h1:ZakZtbCXxCz82NJvq7MoREtiQesnDfrtF6RFUGzQfLo=
-github.com/Alma0010/REALITY v0.0.0-20261030201418-167dfca01cf1 h1:F06LOwas5lXh1qm63/OO6rb650j9njoL+eRhAMBGUeY=
-github.com/Alma0010/REALITY v0.0.0-20261030201418-167dfca01cf1/go.mod h1:DsJblcWDGt76+FVqBVwbwRhxyyNJsGV48gJLch0OOWI=
-github.com/Alma0010/Xray-core v0.0.0-20261030201603-dc3983bb490c h1:GSBlvqF6PO2Ljhj6HjSnRuj2tx1BGzRdrPhTNdEagek=
-github.com/Alma0010/Xray-core v0.0.0-20261030201603-dc3983bb490c/go.mod h1:cJWakpdYD0TaRP22FIYbnKj7Nioxvk1vH7Qk0vAjdzU=
+github.com/Alma0010/Xray-core v0.0.0-20261103092921-ea4d630a8526 h1:MOSS4EIr8MVCxD9yjHSHsoynBsnFkmThhgc0zdGTLFg=
+github.com/Alma0010/Xray-core v0.0.0-20261103092921-ea4d630a8526/go.mod h1:sGRUdl/SwJk96S5OxJA9mYQy60/WGHT3UdOwGYlOg3U=
 github.com/Azure/azure-sdk-for-go v68.0.0+incompatible h1:fcYLmCpyNYRnvJbPerq7U0hS+6+I79yEDJBqVNcqUzU=
 github.com/Azure/azure-sdk-for-go v68.0.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1 h1:jHb/wfvRikGdxMXYV3QG/SzUOPYN9KEUUuC0Yd0/vC0=
@@ -1162,8 +1160,6 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0/go.mod h1:hgWBS7lorOAVIJEQMi4ZsPv9hVvWI6+ch50m39Pf2Ks=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3/go.mod h1:o//XUCC/F+yRGJoPO/VU0GSB0f8Nhgmxx0VIRUvaC0w=
-github.com/gunzi-666/Xray-core v0.0.0-20261102092735-b9c76d7565ff h1:4C1GIx/FTWfe3uMVVPEyvfCJhruuLQbXoMjgWtEKaY8=
-github.com/gunzi-666/Xray-core v0.0.0-20261102092735-b9c76d7565ff/go.mod h1:vrib6ljdsQng0WIZNG3PyFjRg/MJuhmShbqLVsD/Xrg=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/api v1.10.1/go.mod h1:XjsvQN+RJGWI2TWy1/kqaE16HrR2J/FWgkYjdZQsX9M=
 github.com/hashicorp/consul/api v1.20.0/go.mod h1:nR64eD44KQ59Of/ECwt2vUmIK2DKsDzAwTmwmLl8Wpo=

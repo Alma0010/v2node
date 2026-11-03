@@ -1,6 +1,6 @@
 # v2node
 
-基於 [gunzi-666/v2node](https://github.com/gunzi-666/v2node) 的節點服務端，加入 **AnyTLS 內建 404、GitHub 反代下載及 REALITY 舊客戶端相容**，保留上游的入口多 IP 修正與 AnyTLS UDP 空閒回收。
+基於 [gunzi-666/v2node](https://github.com/gunzi-666/v2node) 的節點服務端，加入 **AnyTLS 內建 404、GitHub 反代下載**，保留上游的入口多 IP 修正與 AnyTLS UDP 空閒回收。REALITY 舊客戶端相容採用 [wyx2685/REALITY](https://github.com/wyx2685/REALITY) 的上游實作。
 
 需搭配支援 v2node API 的面板，例如 [修改版 V2Board](https://github.com/wyx2685/v2board)。
 
@@ -65,16 +65,23 @@ v2node update && v2node update_shell
 | --- | --- |
 | 使用反代更新 | `v2node update --proxy && v2node update_shell --proxy` |
 | 使用直連更新 | `v2node update --direct && v2node update_shell --direct` |
-| 更新至指定版本 | `v2node update v0.4.8 --proxy && v2node update_shell --proxy` |
+| 更新至指定版本 | `v2node update v0.4.9 --proxy && v2node update_shell --proxy` |
 | 只更新管理腳本 | `v2node update_shell` |
 
 版本號請使用本倉庫 [Releases](https://github.com/Alma0010/v2node/releases) 中實際存在的版本。若需要重新安裝指定版本，使用上方下載的目前安裝腳本：
 
 ```bash
-bash /tmp/v2node-install.sh v0.4.8 --proxy && v2node update_shell --proxy
+bash /tmp/v2node-install.sh v0.4.9 --proxy && v2node update_shell --proxy
 ```
 
-安裝時，管理腳本會先從對應的 Release 標籤下載；`update_shell` 再同步 `main` 的維護修正。v0.4.8 標籤內的舊安裝腳本未包含後續的 Alpine／資料檔修正，請使用本文開頭的目前安裝腳本。
+安裝時，管理腳本會先從對應的 Release 標籤下載；`update_shell` 再同步 `main` 的維護修正。v0.4.9 已包含 Alpine／OpenRC 與 GeoIP／Geosite 安裝修正；從 v0.4.8 重新安裝時，請使用本文開頭的目前安裝腳本。
+
+### v0.4.9 更新
+
+- 同步 gunzi 上游至 `77bd360`，Xray 核心更新至 26.10.31，Go 更新至 1.27.3，預設關閉 MPTCP。
+- REALITY 使用上游 `25ea3c0` 的 X25519 相容實作，同時支援傳統及 ML-KEM ClientHello。
+- 合併 wyx 上游至 `129abe1`，修正 SS2022 預設使用者金鑰長度與 Freedom 出口的 DNS 策略設定位置。
+- 保留 AnyTLS 404、下載反代、UDP 空閒回收、入口多 IP 及 Alpine／資料檔修正。
 
 ### 下載線路
 
@@ -133,7 +140,7 @@ AnyTLS 使用 **TCP + TLS** 時，預設對未通過認證的正常 HTTP/1.0、H
 
 ### REALITY 舊客戶端相容
 
-接受有效的傳統 X25519 或混合金鑰 ClientHello，不再強制要求 `X25519MLKEM768`，保留金鑰認證及 VLESS UUID 驗證。
+採用 [wyx2685/REALITY 上游實作](https://github.com/wyx2685/REALITY/commit/25ea3c0fa2550b72ee2ba20fd8d70c9a6789b274)，接受有效的傳統 X25519 或混合金鑰 ClientHello，不再強制要求 `X25519MLKEM768`，保留金鑰認證及 VLESS UUID 驗證。
 
 mihomo v1.19.31 使用 `chrome` 指紋時，未設定或已啟用 `support-x25519mlkem768` 的情況均有跨客戶端測試。REALITY 認證失敗仍回落到配置的目標站；REALITY 通過但 VLESS UUID 錯誤時，維持原有拒絕行為。
 
@@ -175,7 +182,7 @@ cd /usr/local/v2node
 
 ### 本地構建與測試
 
-使用 `go.mod` 指定的 Go 版本；目前為 Go 1.27.1、Xray 26.9.30。
+使用 `go.mod` 指定的 Go 版本；目前為 Go 1.27.3、Xray 26.10.31。
 
 ```bash
 build_version=dev
@@ -228,8 +235,8 @@ GitHub Actions 會強制執行上述整合測試。
 
 | 元件 | 本分支使用的來源 |
 | --- | --- |
-| 節點主程式 | [gunzi-666/v2node](https://github.com/gunzi-666/v2node) |
-| Xray 核心 | [Alma0010/Xray-core](https://github.com/Alma0010/Xray-core/tree/dc3983bb490c622570c4cbdf74ec5b717672383a)，基於 gunzi 的 `0548acaedda6` |
-| REALITY 相容修改 | [Alma0010/REALITY](https://github.com/Alma0010/REALITY/commit/167dfca01cf1599fc22d5a61a9be6cce78afa057)，基於上游 `8cdf7bf9c7f0` |
+| 節點主程式 | [gunzi-666/v2node `77bd360`](https://github.com/gunzi-666/v2node/commit/77bd36014f437b02359bc22a2ee263bc3288d4b9)，另合併 [wyx2685/v2node `129abe1`](https://github.com/wyx2685/v2node/commit/129abe1a3db0d8f314e1c21a30a9d41fc42ecfc1) |
+| Xray 核心 | [Alma0010/Xray-core `ea4d630`](https://github.com/Alma0010/Xray-core/tree/ea4d630a8526c248225ac793e7f75e798e0bb984)，基於 gunzi 的 `b9c76d7565ff` |
+| REALITY | [wyx2685/REALITY `25ea3c0`](https://github.com/wyx2685/REALITY/commit/25ea3c0fa2550b72ee2ba20fd8d70c9a6789b274) |
 
 核心衍生模組的版本固定於 [`go.mod`](go.mod)。

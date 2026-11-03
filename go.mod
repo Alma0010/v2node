@@ -258,5 +258,5 @@ require (
 
 replace (
 	github.com/xtls/reality => github.com/wyx2685/REALITY v0.0.0-20261102081311-25ea3c0fa255
-	github.com/xtls/xray-core v1.260930.0 => github.com/gunzi-666/Xray-core v0.0.0-20261102092735-b9c76d7565ff
+	github.com/xtls/xray-core v1.260930.0 => github.com/Alma0010/Xray-core v0.0.0-20261103092921-ea4d630a8526
 )
