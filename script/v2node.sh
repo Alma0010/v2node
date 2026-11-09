@@ -379,7 +379,7 @@ update_shell() {
         rm -f -- "$temporary"
         return 1
     fi
-    install -m 755 "$temporary" /usr/bin/v2node.new && mv -f /usr/bin/v2node.new /usr/bin/v2node
+    command install -m 755 "$temporary" /usr/bin/v2node.new && mv -f /usr/bin/v2node.new /usr/bin/v2node
     local result=$?
     rm -f -- "$temporary"
     return "$result"

@@ -124,6 +124,42 @@ curl() {
         self.assertEqual(self.log.read_text().strip(), 'https://raw.githubusercontent.com/Alma0010/v2node/main/script/install.sh')
         self.assertEqual(self.received.read_text().splitlines(), ['', 'v1.2.3', '--direct'])
 
+    def test_update_shell_replaces_manager_without_calling_install_function(self):
+        manager = self.sandbox / 'usr/bin/v2node'
+        manager.write_text('old-manager')
+        result = self.run_script('v2node.sh', 'DOWNLOAD_PROXY="$DEFAULT_GITHUB_PROXY"; PROXY_ARG_SET=1; update_shell')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(manager.read_text(), (self.fixtures / 'v2node.sh').read_text())
+        self.assertEqual(self.log.read_text().strip(), PROXY+'https://raw.githubusercontent.com/Alma0010/v2node/main/script/v2node.sh')
+        self.assertFalse(list(self.base.glob('v2node-shell.*')))
+
+    def test_update_shell_invalid_download_preserves_manager(self):
+        manager = self.sandbox / 'usr/bin/v2node'
+        manager.write_text('old-manager')
+        result = self.run_script('v2node.sh', 'PROXY_ARG_SET=1; update_shell', 'script')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(manager.read_text(), 'old-manager')
+        self.assertFalse(list(self.base.glob('v2node-shell.*')))
+
+    def test_install_repairs_legacy_tagged_updater(self):
+        source = (ROOT / 'script/v2node.sh').read_text(encoding='utf8')
+        fixed = 'command install -m 755 "$temporary" /usr/bin/v2node.new'
+        legacy = 'install -m 755 "$temporary" /usr/bin/v2node.new'
+        self.assertEqual(source.count(fixed), 1)
+        (self.fixtures / 'v2node.sh').write_text(source.replace(fixed, legacy), encoding='utf8', newline='\n')
+        result = self.run_script('install.sh', 'parse_args v1.2.3 --proxy; load_download_proxy; release=debian; arch=64; install_v2node "$VERSION_ARG"')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        manager = (self.sandbox / 'usr/bin/v2node').read_text(encoding='utf8')
+        self.assertEqual(manager.count(fixed), 1)
+        self.assertEqual(self.log.read_text().splitlines()[-1], PROXY+'https://raw.githubusercontent.com/Alma0010/v2node/v1.2.3/script/v2node.sh')
+
+    def test_install_preserves_already_fixed_tagged_updater(self):
+        source = (ROOT / 'script/v2node.sh').read_text(encoding='utf8')
+        (self.fixtures / 'v2node.sh').write_text(source, encoding='utf8', newline='\n')
+        result = self.run_script('install.sh', 'parse_args v1.2.3 --proxy; load_download_proxy; release=debian; arch=64; install_v2node "$VERSION_ARG"')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.sandbox / 'usr/bin/v2node').read_text(encoding='utf8'), source)
+
     def test_missing_option_value_fails(self):
         result = self.run_script('install.sh', 'parse_args --api-key')
         self.assertNotEqual(result.returncode, 0)

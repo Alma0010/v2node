@@ -361,6 +361,10 @@ install_v2node() {
     fi
     download_file "https://raw.githubusercontent.com/${V2NODE_REPOSITORY}/${last_version}/script/v2node.sh" "$download_dir/v2node.sh" || exit 1
     validate_shell_script "$download_dir/v2node.sh" || { echo "管理脚本校验失败" >&2; exit 1; }
+    # Older release scripts shadow the system install command with a shell
+    # function. Repair that exact updater call while keeping the release tag.
+    sed -i 's/^[[:space:]]*install -m 755 "\$temporary" \(.*v2node\.new.*\)/    command install -m 755 "$temporary" \1/' "$download_dir/v2node.sh" || exit 1
+    validate_shell_script "$download_dir/v2node.sh" || { echo "管理脚本校验失败" >&2; exit 1; }
     if [[ x"${release}" == x"alpine" ]]; then
         stop_openrc_for_update || { echo "无法停止旧服务，程序尚未替换" >&2; exit 1; }
     fi
