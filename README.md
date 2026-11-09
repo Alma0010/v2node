@@ -74,24 +74,7 @@ v2node update && v2node update_shell
 bash /tmp/v2node-install.sh v0.4.9 --proxy && v2node update_shell --proxy
 ```
 
-安裝時，管理腳本會先從對應的 Release 標籤下載；安裝器會修正舊標籤中已知的 `update_shell` 命令衝突，`update_shell` 再同步 `main` 的維護修正。v0.4.9 已包含 Alpine／OpenRC 與 GeoIP／Geosite 安裝修正；從 v0.4.8 重新安裝時，請使用本文開頭的目前安裝腳本。
-
-如果舊版 `v2node update_shell` 顯示「多余参数: 755」，可在 root shell 執行以下命令，一次性替換管理腳本；此操作不會重啟節點或修改節點配置：
-
-```bash
-(
-  set -e
-  tmp=$(mktemp)
-  staged=''
-  trap 'rm -f -- "$tmp"; if [[ -n "$staged" ]]; then rm -f -- "$staged"; fi' EXIT
-  curl -fL https://v4.gh-proxy.org/https://raw.githubusercontent.com/Alma0010/v2node/main/script/v2node.sh -o "$tmp"
-  [[ "$(head -n 1 "$tmp" | tr -d '\r')" == '#!/bin/bash' ]]
-  bash -n "$tmp"
-  staged=$(mktemp /usr/bin/.v2node.XXXXXX)
-  command install -m 755 "$tmp" "$staged"
-  mv -f -- "$staged" /usr/bin/v2node
-)
-```
+安裝時，管理腳本會先從對應的 Release 標籤下載，並自動修復舊版更新問題；`update_shell` 再同步 `main` 的維護修正。v0.4.9 已包含 Alpine／OpenRC 與 GeoIP／Geosite 安裝修正；從 v0.4.8 重新安裝時，請使用本文開頭的目前安裝腳本。
 
 ### v0.4.9 更新
 
