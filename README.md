@@ -78,6 +78,7 @@ bash /tmp/v2node-install.sh v0.4.10 --proxy && v2node update_shell --proxy
 
 ### v0.4.10 更新
 
+- 同步 gunzi、wyx 兩條上游及其 Xray 核心，納入 Freedom、Windows TUN 和本機傳輸修正。
 - 傳統 Shadowsocks AEAD 在同一入站的 TCP、UDP 驗證成功後，共用按金鑰區分的有界 salt 去重記錄。記錄保存在程序記憶體，程序重啟、不同節點與已輪替的舊記錄各有獨立範圍。
 - SS2022 UDP 在完整驗證後才保留或刷新會話，同一有效封包只交付一次。每個入站最多保留 65,536 個會話。
 - AnyTLS 的短 HTTP 請求改用帳戶前綴索引；認證併發名額可獨立設定。
@@ -243,8 +244,8 @@ GitHub Actions 會強制執行上述整合測試。
 
 | 元件 | 本分支使用的來源 |
 | --- | --- |
-| 節點主程式 | [gunzi-666/v2node `77bd360`](https://github.com/gunzi-666/v2node/commit/77bd36014f437b02359bc22a2ee263bc3288d4b9)，另合併 [wyx2685/v2node `129abe1`](https://github.com/wyx2685/v2node/commit/129abe1a3db0d8f314e1c21a30a9d41fc42ecfc1) |
-| Xray 核心 | [Alma0010/Xray-core `c832f02`](https://github.com/Alma0010/Xray-core/tree/c832f020f23a042adcdd82790657180774ac921b)，基於 gunzi 的 `b9c76d7565ff` |
+| 節點主程式 | [gunzi-666/v2node `15a5d1e`](https://github.com/gunzi-666/v2node/commit/15a5d1e3e089acd5be124de4cebde7d904b0ae01)，另合併 [wyx2685/v2node `5c2360f`](https://github.com/wyx2685/v2node/commit/5c2360f95db39f61271e701eabdee200ba8075ea) |
+| Xray 核心 | [Alma0010/Xray-core `00abb47`](https://github.com/Alma0010/Xray-core/tree/00abb47aac08636e8862c77d808e59747f60b8fb)，基於 gunzi 的 `8c530a56f572` |
 | REALITY | [wyx2685/REALITY `25ea3c0`](https://github.com/wyx2685/REALITY/commit/25ea3c0fa2550b72ee2ba20fd8d70c9a6789b274) |
 
 核心衍生模組的版本固定於 [`go.mod`](go.mod)。
