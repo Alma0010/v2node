@@ -65,7 +65,9 @@ jobs:
           python3 tests/fetch_mihomo.py --output "$mihomo_test_binary"
           echo "V2NODE_MIHOMO_TEST_BINARY=$mihomo_test_binary" >> "$GITHUB_ENV"
       - name: Test node and AnyTLS authentication
-        run: go test ./... github.com/xtls/xray-core/proxy/anytls
+        run: |
+          go test ./... github.com/xtls/xray-core/proxy/anytls github.com/xtls/xray-core/proxy/shadowsocks github.com/xtls/xray-core/proxy/shadowsocks_2022
+          go test -race github.com/xtls/xray-core/proxy/shadowsocks github.com/xtls/xray-core/proxy/shadowsocks_2022 -run 'TestInboundSaltScopedByKey|TestAuthenticatedSessionAdmission|TestInvalidAESDoesNotAllocateOrRefresh'
       - name: Check Go code
         run: go vet ./...
       - name: Test installation and download routes

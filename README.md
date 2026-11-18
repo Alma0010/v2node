@@ -65,16 +65,22 @@ v2node update && v2node update_shell
 | --- | --- |
 | 使用反代更新 | `v2node update --proxy && v2node update_shell --proxy` |
 | 使用直連更新 | `v2node update --direct && v2node update_shell --direct` |
-| 更新至指定版本 | `v2node update v0.4.9 --proxy && v2node update_shell --proxy` |
+| 更新至指定版本 | `v2node update v0.4.10 --proxy && v2node update_shell --proxy` |
 | 只更新管理腳本 | `v2node update_shell` |
 
 版本號請使用本倉庫 [Releases](https://github.com/Alma0010/v2node/releases) 中實際存在的版本。若需要重新安裝指定版本，使用上方下載的目前安裝腳本：
 
 ```bash
-bash /tmp/v2node-install.sh v0.4.9 --proxy && v2node update_shell --proxy
+bash /tmp/v2node-install.sh v0.4.10 --proxy && v2node update_shell --proxy
 ```
 
 安裝時，管理腳本會先從對應的 Release 標籤下載，並自動修復舊版更新問題；`update_shell` 再同步 `main` 的維護修正。v0.4.9 已包含 Alpine／OpenRC 與 GeoIP／Geosite 安裝修正；從 v0.4.8 重新安裝時，請使用本文開頭的目前安裝腳本。
+
+### v0.4.10 更新
+
+- 傳統 Shadowsocks AEAD 在同一入站的 TCP、UDP 驗證成功後，共用按金鑰區分的有界 salt 去重記錄。記錄保存在程序記憶體，程序重啟、不同節點與已輪替的舊記錄各有獨立範圍。
+- SS2022 UDP 在完整驗證後才保留或刷新會話，同一有效封包只交付一次。每個入站最多保留 65,536 個會話。
+- AnyTLS 的短 HTTP 請求改用帳戶前綴索引；認證併發名額可獨立設定。
 
 ### v0.4.9 更新
 
@@ -135,6 +141,8 @@ AnyTLS 使用 **TCP + TLS** 時，預設對未通過認證的正常 HTTP/1.0、H
 無法解析的二進位、不完整或超大請求會關閉連線。其他傳輸方式維持原有行為；明確設為 `true` 時，僅接受 AnyTLS + TCP + TLS 配置。
 
 </details>
+
+每個 AnyTLS 入站預設允許 128 條連線同時等待認證。可在 `Nodes` 項目設定 `AnyTLSMaxPendingAuth`（1–65535，0 使用預設值）。關閉 404 後，認證名額仍然生效。合法連線認證完成後會立即釋放名額。
 
 此功能提供固定 HTTP 回應，TLS 握手與異常請求處理仍可能有別於真正 Nginx，也不新增重放防護。
 
@@ -236,7 +244,7 @@ GitHub Actions 會強制執行上述整合測試。
 | 元件 | 本分支使用的來源 |
 | --- | --- |
 | 節點主程式 | [gunzi-666/v2node `77bd360`](https://github.com/gunzi-666/v2node/commit/77bd36014f437b02359bc22a2ee263bc3288d4b9)，另合併 [wyx2685/v2node `129abe1`](https://github.com/wyx2685/v2node/commit/129abe1a3db0d8f314e1c21a30a9d41fc42ecfc1) |
-| Xray 核心 | [Alma0010/Xray-core `ea4d630`](https://github.com/Alma0010/Xray-core/tree/ea4d630a8526c248225ac793e7f75e798e0bb984)，基於 gunzi 的 `b9c76d7565ff` |
+| Xray 核心 | [Alma0010/Xray-core `c832f02`](https://github.com/Alma0010/Xray-core/tree/c832f020f23a042adcdd82790657180774ac921b)，基於 gunzi 的 `b9c76d7565ff` |
 | REALITY | [wyx2685/REALITY `25ea3c0`](https://github.com/wyx2685/REALITY/commit/25ea3c0fa2550b72ee2ba20fd8d70c9a6789b274) |
 
 核心衍生模組的版本固定於 [`go.mod`](go.mod)。

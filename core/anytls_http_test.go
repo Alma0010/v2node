@@ -39,7 +39,7 @@ func TestAnyTLSHTTPRejectionConfiguration(t *testing.T) {
 		{"explicit_websocket_invalid", "ws", "remote", panel.Tls, boolPtr(true), false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			info := &panel.NodeInfo{Type: "anytls", Security: tc.security, Common: &panel.CommonNode{Network: tc.network, PaddingScheme: []string{"stop=8"}, AnyTLSRejectHTTP: tc.override, CertInfo: &panel.CertInfo{CertMode: tc.certMode, CertFile: certFile, KeyFile: keyFile}}}
+			info := &panel.NodeInfo{Type: "anytls", Security: tc.security, Common: &panel.CommonNode{Network: tc.network, PaddingScheme: []string{"stop=8"}, AnyTLSRejectHTTP: tc.override, AnyTLSMaxPendingAuth: 37, CertInfo: &panel.CertInfo{CertMode: tc.certMode, CertFile: certFile, KeyFile: keyFile}}}
 			in := &coreConf.InboundDetourConfig{}
 			err := buildAnyTLS(info, in)
 			if tc.invalid {
@@ -62,7 +62,7 @@ func TestAnyTLSHTTPRejectionConfiguration(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg := message.(*anytls.ServerConfig)
-			if cfg.RejectHttp != tc.enabled || cfg.PaddingScheme != "stop=8" {
+			if cfg.RejectHttp != tc.enabled || cfg.MaxPendingAuth != 37 || cfg.PaddingScheme != "stop=8" {
 				t.Fatalf("incorrect AnyTLS settings: %v", cfg)
 			}
 			if tc.security == panel.Tls {

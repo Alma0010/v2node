@@ -23,12 +23,13 @@ type LogConfig struct {
 }
 
 type NodeConfig struct {
-	APIHost          string `mapstructure:"ApiHost"`
-	NodeID           int    `mapstructure:"NodeID"`
-	Key              string `mapstructure:"ApiKey"`
-	Timeout          int    `mapstructure:"Timeout"`
-	RetryCount       *int   `mapstructure:"RetryCount"`
-	AnyTLSRejectHTTP *bool  `mapstructure:"AnyTLSRejectHTTP"`
+	APIHost              string `mapstructure:"ApiHost"`
+	NodeID               int    `mapstructure:"NodeID"`
+	Key                  string `mapstructure:"ApiKey"`
+	Timeout              int    `mapstructure:"Timeout"`
+	RetryCount           *int   `mapstructure:"RetryCount"`
+	AnyTLSRejectHTTP     *bool  `mapstructure:"AnyTLSRejectHTTP"`
+	AnyTLSMaxPendingAuth uint32 `mapstructure:"AnyTLSMaxPendingAuth"`
 }
 
 func New() *Conf {

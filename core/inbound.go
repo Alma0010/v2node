@@ -500,8 +500,9 @@ func buildAnyTLS(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig
 		return errors.New("AnyTLSRejectHTTP requires AnyTLS over TCP with TLS enabled")
 	}
 	settings := &coreConf.AnyTLSServerConfig{
-		PaddingScheme: v.PaddingScheme,
-		RejectHTTP:    anyTLSRejectHTTPEnabled(nodeInfo),
+		PaddingScheme:  v.PaddingScheme,
+		RejectHTTP:     anyTLSRejectHTTPEnabled(nodeInfo),
+		MaxPendingAuth: v.AnyTLSMaxPendingAuth,
 	}
 	t := coreConf.TransportProtocol(v.Network)
 	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}

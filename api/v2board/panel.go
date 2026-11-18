@@ -15,16 +15,17 @@ import (
 // Panel is the interface for different panel's api.
 
 type Client struct {
-	client           *resty.Client
-	APIHost          string
-	Token            string
-	NodeId           int
-	nodeEtag         string
-	userEtag         string
-	responseBodyHash string
-	UserList         *UserListBody
-	AliveMap         *AliveMap
-	anyTLSRejectHTTP *bool
+	client               *resty.Client
+	APIHost              string
+	Token                string
+	NodeId               int
+	nodeEtag             string
+	userEtag             string
+	responseBodyHash     string
+	UserList             *UserListBody
+	AliveMap             *AliveMap
+	anyTLSRejectHTTP     *bool
+	anyTLSMaxPendingAuth uint32
 }
 
 func New(c *conf.NodeConfig) (*Client, error) {
@@ -56,12 +57,13 @@ func New(c *conf.NodeConfig) (*Client, error) {
 		"token":     c.Key,
 	})
 	return &Client{
-		client:           client,
-		Token:            c.Key,
-		APIHost:          c.APIHost,
-		NodeId:           c.NodeID,
-		UserList:         &UserListBody{},
-		AliveMap:         &AliveMap{},
-		anyTLSRejectHTTP: c.AnyTLSRejectHTTP,
+		client:               client,
+		Token:                c.Key,
+		APIHost:              c.APIHost,
+		NodeId:               c.NodeID,
+		UserList:             &UserListBody{},
+		AliveMap:             &AliveMap{},
+		anyTLSRejectHTTP:     c.AnyTLSRejectHTTP,
+		anyTLSMaxPendingAuth: c.AnyTLSMaxPendingAuth,
 	}, nil
 }
